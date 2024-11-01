@@ -1,0 +1,130 @@
+# Use postgres/example user/password credentials
+services:
+  localstack:
+    image: localstack/localstack:3.8.1
+    profiles: ['aws', 'emulator']
+    expose:
+      - '4566'
+    environment:
+      - SERVICES=s3,ses
+    links:
+      # Once a file is uploaded to localstack, localstack redirects back to CiviForm.
+      # It does this by mapping any 'localhost' domain to the 'civiform' domain (see
+      # localstack/localstack.nginx.conf). So, we need the localstack service to be
+      # aware of the civiform service to do that redirect correctly.
+      - 'civiform:civiform-service'
+    networks:
+      default:
+        aliases:
+          # We use hosted-style for s3 bucket urls. Which matches production.
+          # https://docs.localstack.cloud/user-guide/aws/s3/
+          # So we need to add host mapping for test bucket civiform-local-s3
+          # and civiform-local-s3-public
+          - civiform-local-s3.s3.localhost.localstack.cloud
+          - civiform-local-s3-public.s3.localhost.localstack.cloud
+          - localhost.localstack.cloud
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    profiles: ['azure', 'emulator']
+    expose:
+      - '10000'
+
+  # The dev oidc server needs to be visible to the Civiform server and web browsers
+  # on the same host:port. Developers need to add a localhost IP alias for this
+  # container name in their /etc/hosts file for the web brower to load the auth url.
+  # EG: 127.0.0.1 dev-oidc
+  dev-oidc:
+    image: civiform-oidc-provider
+    restart: always
+    expose:
+      - 3390
+    environment:
+      # Use an explicit port to not conflict with other test instances.
+      - OIDC_PORT=3390
+
+  mock-web-services:
+    image: civiform-mock-web-services
+
+  db:
+    image: postgres:16.4
+    restart: always
+    expose:
+      - '5432'
+    environment:
+      POSTGRES_PASSWORD: example
+    volumes:
+      - ./init_postgres.sql:/docker-entrypoint-initdb.d/init_postgres.sql
+
+  civiform:
+    image: civiform-dev
+    links:
+      - 'db:database'
+      - 'dev-oidc'
+      - 'mock-web-services'
+    expose:
+      - '9000'
+      - '8457'
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-test}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-test}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN:-test}
+      - AWS_REGION
+      - SENDER_EMAIL_ADDRESS
+      - AWS_S3_BUCKET_NAME
+      - AWS_S3_PUBLIC_BUCKET_NAME
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID:-test}
+      - AZURE_LOCAL_CONNECTION_STRING
+      - AZURE_STORAGE_ACCOUNT_NAME
+      - AZURE_STORAGE_ACCOUNT_CONTAINER
+      - CIVIFORM_TIME_ZONE_ID
+      - STORAGE_SERVICE_NAME
+      - LOGIN_RADIUS_API_KEY
+      - LOGIN_RADIUS_METADATA_URI
+      - LOGIN_RADIUS_SAML_APP_NAME
+      - LOGIN_RADIUS_PRIVATE_KEY_PASS
+      - LOGIN_RADIUS_KEYSTORE_PASS
+      - LOGIN_RADIUS_KEYSTORE_NAME
+      - CIVIFORM_APPLICANT_IDP=generic-oidc
+      - CIVIFORM_ADMIN_IDP=adfs
+      # Hard coded in test-support/test_oidc_provider.js
+      - IDCS_CLIENT_ID=idcs-fake-oidc-client
+      - IDCS_SECRET=idcs-fake-oidc-secret
+      - IDCS_DISCOVERY_URI=http://dev-oidc:3390/.well-known/openid-configuration
+      - IDCS_REGISTER_URI
+      - APPLICANT_REGISTER_URI
+      - ADFS_CLIENT_ID
+      - ADFS_SECRET
+      - ADMIN_OIDC_PROVIDER_NAME
+      - ADMIN_OIDC_CLIENT_ID
+      - ADMIN_OIDC_CLIENT_SECRET
+      - ADMIN_OIDC_DISCOVERY_URI
+      - ADMIN_OIDC_RESPONSE_MODE
+      - ADMIN_OIDC_RESPONSE_TYPE
+      - ADMIN_OIDC_ADDITIONAL_SCOPES
+      - APPLICANT_OIDC_POST_LOGOUT_REDIRECT_PARAM
+      - APPLICANT_OIDC_LOGOUT_CLIENT_PARAM=client_id
+      - APPLICANT_OIDC_OVERRIDE_LOGOUT_URL
+      - APPLICANT_OIDC_PROVIDER_NAME
+      - APPLICANT_OIDC_CLIENT_ID=generic-fake-oidc-client
+      - APPLICANT_OIDC_CLIENT_SECRET=bar
+      - APPLICANT_OIDC_DISCOVERY_URI=http://dev-oidc:3390/.well-known/openid-configuration
+      - APPLICANT_OIDC_RESPONSE_MODE
+      - APPLICANT_OIDC_RESPONSE_TYPE
+      - APPLICANT_OIDC_ADDITIONAL_SCOPES
+      - APPLICANT_OIDC_LOCALE_ATTRIBUTE
+      - APPLICANT_OIDC_EMAIL_ATTRIBUTE
+      - APPLICANT_OIDC_FIRST_NAME_ATTRIBUTE
+      - APPLICANT_OIDC_MIDDLE_NAME_ATTRIBUTE
+      - APPLICANT_OIDC_LAST_NAME_ATTRIBUTE
+      - LOGIN_GOV_CLIENT_ID
+      - LOGIN_GOV_DISCOVERY_URI
+      - LOGIN_GOV_ADDITIONAL_SCOPES
+      - LOGIN_GOV_ACR_VALUE
+      - CF_OPTIONAL_QUESTIONS
+      - CIVIC_ENTITY_SMALL_LOGO_URL
+      - WHITELABEL_CIVIC_ENTITY_SHORT_NAME
+      - WHITELABEL_CIVIC_ENTITY_FULL_NAME
+      - FAVICON_URL
+      - DISABLE_ERRORPRONE=${DISABLE_ERRORPRONE:-false}
+    entrypoint: /bin/bash

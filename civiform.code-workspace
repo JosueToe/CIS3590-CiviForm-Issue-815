@@ -1,0 +1,66 @@
+{
+  "folders": [
+    {
+      "path": "server"
+    },
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.watcherExclude": {
+      "**/target": true,
+      "**/.bloop": true
+    },
+    "search.exclude": {
+      "*/target": true,
+      "**/.bloop": true
+    },
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.compile.nullAnalysis.mode": "disabled"
+  },
+  "extensions": {
+    "recommendations": [
+      "bradlc.vscode-tailwindcss",
+      "dbaeumer.vscode-eslint",
+      "github.vscode-pull-request-github",
+      "graphite.gti-vscode",
+      "ms-azuretools.vscode-docker",
+      "ms-ossdata.vscode-postgresql",
+      "ms-playwright.playwright",
+      "ms-vscode-remote.remote-containers",
+      "redhat.vscode-yaml",
+      "rvest.vs-code-prettier-eslint",
+      "scala-lang.scala",
+      "scalameta.metals",
+      "vscjava.vscode-java-pack",
+      "vscode-icons-team.vscode-icons"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "java",
+        "name": "Attach to Civiform Browser Tests",
+        "request": "attach",
+        "hostName": "localhost",
+        "port": "9457"
+      },
+      {
+        "type": "java",
+        "name": "Attach to Civiform Unit Tests",
+        "request": "attach",
+        "hostName": "localhost",
+        "port": "8459"
+      },
+      {
+        "type": "java",
+        "name": "Attach to Civiform Dev",
+        "request": "attach",
+        "hostName": "localhost",
+        "port": "8457"
+      }
+    ]
+  }
+}
